@@ -37,6 +37,6 @@ char **get_list() {
 }
 
 int main(int argc, char **argv) {
-	char **list = get_list();
+	char **list = get_list(); // done
 	return 0;
 }
