@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <string.h>
 
 char *get_word(char *end) {
 	int bytes, n = 0;
@@ -33,10 +34,21 @@ char **get_list() {
 		list[n] = word;
 		n++;
 	}while (word_last_char != '\n');
+	bytes = (n + 1) * sizeof(char *);
+	list = realloc(list, bytes);
+	list[n] = NULL;
 	return list;
 }
 
+void start_shell() {
+	char **list = NULL;
+	list = get_list();
+	while (strcmp(list[0], "quit") && strcmp(list[0], "exit")) {
+
+	}
+}
+
 int main(int argc, char **argv) {
-	char **list = get_list(); // done
+	start_shell();
 	return 0;
 }
