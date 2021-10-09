@@ -40,15 +40,43 @@ char **get_list() {
 	return list;
 }
 
-void start_shell() {
-	char **list = NULL;
-	list = get_list();
-	while (strcmp(list[0], "quit") && strcmp(list[0], "exit")) {
-
+void memfree(char **list) {
+	int i = 0;
+	while (list != NULL) {
+		free(list[i]);
+		i++;
 	}
+	free(list);
 }
 
+int start_shell() {
+	char **list = NULL;
+	printf("%s", "> ");
+	list = get_list();
+	while (strcmp(list[0], "quit") && strcmp(list[0], "exit")) {
+		if (fork() == 0) {
+			if (execvp(list[0], list) < 0) {
+				perror("exec failed: ");
+				return 1;
+			}
+			return 0;
+		}
+		wait(NULL);
+		printf("%s", "> ");
+		list = get_list();
+	}
+	memfree(list);
+	return 0;
+}
+
+
 int main(int argc, char **argv) {
-	start_shell();
+	int shell_status = start_shell();
+	if (shell_status == 0) {
+		puts("shell finished succesfully, congrats!");
+	}
+	else {
+		puts("shell failed :( ");
+	}
 	return 0;
 }
