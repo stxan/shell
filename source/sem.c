@@ -55,7 +55,7 @@ void memfree(char **list) {
 
 int start_shell() {
 	char **list = NULL;
-	printf("%s", "> ");
+	printf("\e[1;36m%s\033[0m", "> ");
 	list = get_list();
 	while (strcmp(list[0], "quit") && strcmp(list[0], "exit")) {
 		if (fork() == 0) {
@@ -67,7 +67,7 @@ int start_shell() {
 		}
 		wait(NULL);
 		memfree(list);
-		printf("%s", "> ");
+		printf("\e[1;36m%s\033[0m", "> ");
 		list = get_list();
 	}
 	memfree(list);
@@ -78,10 +78,10 @@ int start_shell() {
 int main(int argc, char **argv) {
 	int shell_status = start_shell();
 	if (shell_status == 0) {
-		puts("shell finished successfully, congrats!");
+		puts("\e[0;32mshell finished successfully, congrats!\033[0m");
 	}
 	else {
-		puts("shell failed :( ");
+		puts("\e[0;31mshell failed :( \033[0m");
 	}
 	return 0;
 }
