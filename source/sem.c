@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <fcntl.h>
 
 #define INPUT 0
 #define OUTPUT 1
@@ -53,19 +54,73 @@ void memfree(char **list) {
 	free(list);
 }
 
+int check_for_inp_outp(char **list, int *rdct_pos) {
+	for (int i = 0; list[i] != NULL; i++) {
+		for (int j = 0; list[i][j] != '\0'; j++) {
+			if (list[i][j] == '>') {
+				*rdct_pos = ++i;
+				return 1; // change output
+			}
+			if (list[i][j] == '<') {
+				*rdct_pos = ++i;
+				return 0; //change input
+			}
+		}
+	}
+	return -1; //no changes
+}
+
+char **listcut(char **list) {
+	char **tmp = list;
+	for (int i = 0; list[i] != NULL; i++) {
+		for (int j = 0; list[i][j] != '\0'; j++) {
+			if (list[i][j] == '>' || list[i][j] == '<') {
+				for (int k = i; list[k] != NULL; k++) {
+					free(list[k]);
+				}
+				list[i] = NULL;
+				return tmp;
+			}
+		}
+	}
+	return tmp;
+}
+
+void redirect(char **list, int direction, int pos) {
+	int fd = open(list[pos], O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	list = listcut(list);
+	for (int i = 0; list[i] != NULL; i++)
+		puts(list[i]);
+	if (fork() == 0) {
+		dup2(fd, direction);
+		if(execvp(list[0], list) < 0) {
+			perror("exec failed");
+			return;
+		}
+	}
+	wait(NULL);
+}
+
 int start_shell() {
+	int direction, redirect_position;
 	char **list = NULL;
 	printf("\e[1;36m%s\033[0m", "> ");
 	list = get_list();
 	while (strcmp(list[0], "quit") && strcmp(list[0], "exit")) {
-		if (fork() == 0) {
-			if (execvp(list[0], list) < 0) {
-				perror("exec failed: ");
-				return 1;
-			}
-			return 0;
+		direction = check_for_inp_outp(list, &redirect_position);
+		printf("\ncheck: %d\n", direction);
+		if (direction >= 0) { //change output
+			redirect(list, direction, redirect_position);
 		}
-		wait(NULL);
+		else {
+			if (fork() == 0) {
+				if (execvp(list[0], list) < 0) {
+					perror("exec failed: ");
+					return 1;
+				}
+			}	
+			wait(NULL);
+		}
 		memfree(list);
 		printf("\e[1;36m%s\033[0m", "> ");
 		list = get_list();
