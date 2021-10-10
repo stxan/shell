@@ -4,6 +4,9 @@
 #include <sys/wait.h>
 #include <string.h>
 
+#define INPUT 0
+#define OUTPUT 1
+
 char *get_word(char *end) {
 	int bytes, n = 0;
 	char *tmp = NULL;
@@ -42,10 +45,11 @@ char **get_list() {
 
 void memfree(char **list) {
 	int i = 0;
-	while (list != NULL) {
+	while (list[i] != NULL) {
 		free(list[i]);
 		i++;
 	}
+	free(list[i]);
 	free(list);
 }
 
@@ -62,6 +66,7 @@ int start_shell() {
 			return 0;
 		}
 		wait(NULL);
+		memfree(list);
 		printf("%s", "> ");
 		list = get_list();
 	}
@@ -73,7 +78,7 @@ int start_shell() {
 int main(int argc, char **argv) {
 	int shell_status = start_shell();
 	if (shell_status == 0) {
-		puts("shell finished succesfully, congrats!");
+		puts("shell finished successfully, congrats!");
 	}
 	else {
 		puts("shell failed :( ");
