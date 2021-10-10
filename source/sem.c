@@ -33,10 +33,12 @@ char **get_list() {
 	int bytes, n = 0;
 	do {
 		word = get_word(&word_last_char);
-		bytes = (n + 1) * sizeof(char *);
-		list = realloc(list, bytes);
-		list[n] = word;
-		n++;
+		if (word[0] != ' ' && word[0] != '\t' && word[0] != '\n'){
+			bytes = (n + 1) * sizeof(char *);
+			list = realloc(list, bytes);
+			list[n] = word;
+			n++;
+		}	
 	}while (word_last_char != '\n');
 	bytes = (n + 1) * sizeof(char *);
 	list = realloc(list, bytes);
@@ -87,10 +89,15 @@ char **listcut(char **list) {
 }
 
 void redirect(char **list, int direction, int pos) {
-	int fd = open(list[pos], O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+
+	int fd;
+	if (direction == 1) {
+		fd = open(list[pos], O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	}
+	if (direction == 0) {
+		fd = open(list[pos], O_RDONLY|O_CREAT, S_IRUSR|S_IWUSR);
+	}
 	list = listcut(list);
-	for (int i = 0; list[i] != NULL; i++)
-		puts(list[i]);
 	if (fork() == 0) {
 		dup2(fd, direction);
 		if(execvp(list[0], list) < 0) {
@@ -99,6 +106,7 @@ void redirect(char **list, int direction, int pos) {
 		}
 	}
 	wait(NULL);
+	close(fd);
 }
 
 int start_shell() {
@@ -108,7 +116,6 @@ int start_shell() {
 	list = get_list();
 	while (strcmp(list[0], "quit") && strcmp(list[0], "exit")) {
 		direction = check_for_inp_outp(list, &redirect_position);
-		printf("\ncheck: %d\n", direction);
 		if (direction >= 0) { //change output
 			redirect(list, direction, redirect_position);
 		}
