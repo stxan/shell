@@ -12,6 +12,23 @@ char *get_word(char *end) {
 	int bytes, n = 0;
 	char *tmp = NULL;
 	char ch = getchar();
+	while (*end == ' ' && (ch == ' ' || ch == '\n' || ch == '\t')) {
+		if (ch == '\n') {
+			bytes = (n + 1) * sizeof(char);
+			tmp = realloc(tmp, bytes);
+			tmp[n] = '\0';
+			*end = ch;
+			return tmp;
+		}
+		else 
+			ch = getchar();
+	}
+	while (ch == ' ' || ch == '\t' || ch == '\n') {
+		if (ch == '\n') {
+			printf("\e[1;36m%s\033[0m", "> ");
+		}
+		ch = getchar();
+	}
 	while (ch != ' ' && ch != '\n' && ch != '\t') {
 		bytes = (n + 1) * sizeof(char);
 		tmp = realloc(tmp, bytes);
@@ -29,16 +46,19 @@ char *get_word(char *end) {
 char **get_list() {
 	char **list = NULL;
 	char *word = NULL;
-	char word_last_char;
+	char word_last_char = '0';
 	int bytes, n = 0;
 	do {
 		word = get_word(&word_last_char);
-		if (word[0] != ' ' && word[0] != '\t' && word[0] != '\n'){
+		if (word[0] != ' ' && word[0] != '\t' && word[0] != '\n' && word[0] != '\0'){
 			bytes = (n + 1) * sizeof(char *);
 			list = realloc(list, bytes);
 			list[n] = word;
 			n++;
-		}	
+		}
+		else {
+			free(word);
+		}
 	}while (word_last_char != '\n');
 	bytes = (n + 1) * sizeof(char *);
 	list = realloc(list, bytes);
@@ -95,12 +115,13 @@ void redirect(char **list, int direction, int pos) {
 		fd = open(list[pos], O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	}
 	if (direction == 0) {
-		fd = open(list[pos], O_RDONLY|O_CREAT, S_IRUSR|S_IWUSR);
+		fd = open(list[pos], O_RDONLY, S_IRUSR);
 	}
 	list = listcut(list);
 	if (fork() == 0) {
 		dup2(fd, direction);
 		if(execvp(list[0], list) < 0) {
+			memfree(list);
 			perror("exec failed");
 			return;
 		}
@@ -108,7 +129,7 @@ void redirect(char **list, int direction, int pos) {
 	wait(NULL);
 	close(fd);
 }
-
+//
 int start_shell() {
 	int direction, redirect_position;
 	char **list = NULL;
@@ -122,6 +143,7 @@ int start_shell() {
 		else {
 			if (fork() == 0) {
 				if (execvp(list[0], list) < 0) {
+					memfree(list);
 					perror("exec failed: ");
 					return 1;
 				}
