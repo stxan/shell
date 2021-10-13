@@ -1,3 +1,2 @@
-%: %.c
-	gcc $@.c -o $@ -Wall -Werror -lm -fsanitize=address,leak
-	cpplint --filter=-legal/copyright $@.c
+all:
+	gcc source/sem.c -o bin/sem -Wall -Werror -lm -fsanitize=address,leak
