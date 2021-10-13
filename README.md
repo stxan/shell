@@ -3,6 +3,5 @@ Alexander Stoletniy's shell in C
 
 How to compile my code??
 
---> Download "sem.c" and "Makefile" files to your device
---> Type "make sem" into your console (be sure if they are placed in the same directory)
---> Enjoy!
+--> Download "source/" directory and "Makefile" to your device
+--> Type "make" into your console(be sure if you are in the same directory as your files)
