@@ -63,6 +63,10 @@ char **get_list() {
 	bytes = (n + 1) * sizeof(char *);
 	list = realloc(list, bytes);
 	list[n] = NULL;
+	for (int i = 0; list[i] != NULL; i++) {
+		if (strcmp(list[i], ">") == 0)
+			puts("yes");
+	}
 	return list;
 }
 
@@ -76,17 +80,38 @@ void memfree(char **list) {
 	free(list);
 }
 
-int check_for_inp_outp(char **list, int *rdct_pos) {
+/*int check_for_input_output(char **list, int *redirect_pos) {
 	for (int i = 0; list[i] != NULL; i++) {
 		for (int j = 0; list[i][j] != '\0'; j++) {
+			if (list[i][j] == '|') {
+				*redirect_pos = ++i;
+				return 2; // pipe
+			}
 			if (list[i][j] == '>') {
-				*rdct_pos = ++i;
+				*redirect_pos = ++i;
 				return 1; // change output
 			}
 			if (list[i][j] == '<') {
-				*rdct_pos = ++i;
+				*redirect_pos = ++i;
 				return 0; //change input
 			}
+		}
+	}
+	return -1; //no changes
+}*/
+int check_for_input_output(char **list, int *redirect_pos) {
+	for (int i = 0; list[i] != NULL; i++) {
+		if (strcmp(list[i], "|") == 0) {
+			*redirect_pos = ++i;
+			return 2; // pipe
+		}
+		if (strcmp(list[i], ">") == 0) {
+			*redirect_pos = ++i;
+			return 1; // change output
+		}
+		if (strcmp(list[i], "<") == 0) {
+			*redirect_pos = ++i;
+			return 0; //change input
 		}
 	}
 	return -1; //no changes
@@ -129,6 +154,32 @@ void redirect(char **list, int direction, int pos) {
 	wait(NULL);
 	close(fd);
 }
+
+//создать массив для второй части после пайпа, затем снова запустить чек на редирект
+
+void call_conv(char **list, int redirect_pos) {
+	char **sec_part = NULL;
+	int n = 0, m = 0, k = 0, bytes;
+	for (int i = redirect_pos; list[i] != NULL; i++) {
+		//puts(list[i]);
+		bytes = (m + 1) * sizeof(char *);
+		sec_part = realloc(sec_part, bytes);
+		m++;
+		for (int j = 0, k = 0; list[i][j] != '\0'; j++, k++) {
+			bytes = (n + 1) * sizeof(char);
+			sec_part = realloc(sec_part, bytes);
+			sec_part[k][j] = list[i][j];
+			n++;
+		}
+		sec_part[k][n] = list[i][n];
+		bytes = (n + 1) * sizeof(char);
+		sec_part = realloc(sec_part, bytes);
+		sec_part[k][n] = list[i][n];
+		n = 0;
+		puts(sec_part[k]);
+	}
+}
+
 //
 int start_shell() {
 	int direction, redirect_position;
@@ -136,8 +187,11 @@ int start_shell() {
 	printf("\e[1;36m%s\033[0m", "> ");
 	list = get_list();
 	while (strcmp(list[0], "quit") && strcmp(list[0], "exit")) {
-		direction = check_for_inp_outp(list, &redirect_position);
-		if (direction >= 0) { //change output
+		direction = check_for_input_output(list, &redirect_position);
+		if (direction == 2) {
+			call_conv(list, redirect_position);
+		}
+		else if (direction >= 0) { //change output
 			redirect(list, direction, redirect_position);
 		}
 		else {
