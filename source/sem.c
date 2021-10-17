@@ -63,10 +63,6 @@ char **get_list() {
 	bytes = (n + 1) * sizeof(char *);
 	list = realloc(list, bytes);
 	list[n] = NULL;
-	for (int i = 0; list[i] != NULL; i++) {
-		if (strcmp(list[i], ">") == 0)
-			puts("yes");
-	}
 	return list;
 }
 
@@ -80,25 +76,6 @@ void memfree(char **list) {
 	free(list);
 }
 
-/*int check_for_input_output(char **list, int *redirect_pos) {
-	for (int i = 0; list[i] != NULL; i++) {
-		for (int j = 0; list[i][j] != '\0'; j++) {
-			if (list[i][j] == '|') {
-				*redirect_pos = ++i;
-				return 2; // pipe
-			}
-			if (list[i][j] == '>') {
-				*redirect_pos = ++i;
-				return 1; // change output
-			}
-			if (list[i][j] == '<') {
-				*redirect_pos = ++i;
-				return 0; //change input
-			}
-		}
-	}
-	return -1; //no changes
-}*/
 int check_for_input_output(char **list, int *redirect_pos) {
 	for (int i = 0; list[i] != NULL; i++) {
 		if (strcmp(list[i], "|") == 0) {
@@ -117,20 +94,12 @@ int check_for_input_output(char **list, int *redirect_pos) {
 	return -1; //no changes
 }
 
-char **listcut(char **list) {
-	char **tmp = list;
-	for (int i = 0; list[i] != NULL; i++) {
-		for (int j = 0; list[i][j] != '\0'; j++) {
-			if (list[i][j] == '>' || list[i][j] == '<') {
-				for (int k = i; list[k] != NULL; k++) {
-					free(list[k]);
-				}
-				list[i] = NULL;
-				return tmp;
-			}
-		}
+char **listcut(char **list, int rdr_pos) {
+	for (int i = rdr_pos - 1; list[i] != NULL; i++) {
+		free(list[i]);
 	}
-	return tmp;
+	list[rdr_pos - 1] = NULL;
+	return list;
 }
 
 void redirect(char **list, int direction, int pos) {
@@ -142,7 +111,7 @@ void redirect(char **list, int direction, int pos) {
 	if (direction == 0) {
 		fd = open(list[pos], O_RDONLY, S_IRUSR);
 	}
-	list = listcut(list);
+	list = listcut(list, pos);
 	if (fork() == 0) {
 		dup2(fd, direction);
 		if(execvp(list[0], list) < 0) {
