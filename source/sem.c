@@ -125,13 +125,31 @@ void redirect(char **list, int direction, int pos) {
 	wait(NULL);
 	close(fd);
 }
+
+void redirect_for_pipe(char **list, int direction, int pos) {
+	int fd;
+	if (direction == 1) {
+		fd = open(list[pos], O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	}
+	if (direction == 0) {
+		fd = open(list[pos], O_RDONLY, S_IRUSR);
+	}
+	list = listcut(list, pos);
+	dup2(fd, direction);
+	if (execvp(list[0], list) < 0) {
+		memfree(list);
+		perror("exec failed");
+		return;
+	}
+}
+
 // ls -l | wc
 //создать массив для второй части после пайпа, затем снова запустить чек на редирект
 //может, создать указатель на вторую часть списка, чтобы не выделять память
 
 void call_conv(char **list, int redirect_pos) { //redirect_pos - позиция первого слова после символа '|'
 	char **sec_part = NULL;
-	int i;
+	int i, direction, direction_changer_position;
 	sec_part = &list[redirect_pos];
 	free(list[redirect_pos - 1]);
 	list[redirect_pos - 1] = NULL;
@@ -141,18 +159,45 @@ void call_conv(char **list, int redirect_pos) { //redirect_pos - позиция 
 		dup2(fd[1], 1);
 		close(fd[0]);
 		close(fd[1]);
-		execvp(list[0], list);
+		direction = check_for_input_output(list, &direction_changer_position);
+		if (direction >= 0) {
+			redirect_for_pipe(list, direction, direction_changer_position);
+		}
+		else {
+			if (execvp(list[0], list) < 0) {
+				memfree(list);
+				perror("exec failed successfully: ");
+				return;
+
+			}
+		}
+		return;
 	}
 	if (fork() == 0) {
 		dup2(fd[0], 0);
 		close(fd[0]);
 		close(fd[1]);
-		execvp(sec_part[0], sec_part);
+		direction = check_for_input_output(sec_part, &direction_changer_position);
+		if (direction >= 0) {
+			redirect_for_pipe(sec_part, direction, direction_changer_position);
+		}
+		else {
+			if (execvp(sec_part[0], sec_part) < 0) {
+				memfree(list);
+				perror("exec failed successfully: ");
+				return;
+			}
+		}
+		return;
 	}
+	//dup2(1, fd[1]);
+	//dup2(0, fd[0]);
 	close(fd[0]);
 	close(fd[1]);
 	wait(NULL);
 	wait(NULL);
+	dup2(1, fd[1]);
+	dup2(0, fd[0]);
 	for (i = redirect_pos; list[i] != NULL; i++) {
 		free(list[i]);
 	}
