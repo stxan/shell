@@ -82,6 +82,8 @@ int check_for_input_output(char **list, int *redirect_pos) {
 			*redirect_pos = ++i;
 			return 2; // pipe
 		}
+	}
+	for (int i = 0; list[i] != NULL; i++) {
 		if (strcmp(list[i], ">") == 0) {
 			*redirect_pos = ++i;
 			return 1; // change output
@@ -123,32 +125,42 @@ void redirect(char **list, int direction, int pos) {
 	wait(NULL);
 	close(fd);
 }
-
+// ls -l | wc
 //создать массив для второй части после пайпа, затем снова запустить чек на редирект
+//может, создать указатель на вторую часть списка, чтобы не выделять память
 
-void call_conv(char **list, int redirect_pos) {
+void call_conv(char **list, int redirect_pos) { //redirect_pos - позиция первого слова после символа '|'
 	char **sec_part = NULL;
-	int n = 0, m = 0, k = 0, bytes;
-	for (int i = redirect_pos; list[i] != NULL; i++) {
-		//puts(list[i]);
-		bytes = (m + 1) * sizeof(char *);
-		sec_part = realloc(sec_part, bytes);
-		m++;
-		for (int j = 0, k = 0; list[i][j] != '\0'; j++, k++) {
-			bytes = (n + 1) * sizeof(char);
-			sec_part = realloc(sec_part, bytes);
-			sec_part[k][j] = list[i][j];
-			n++;
-		}
-		sec_part[k][n] = list[i][n];
-		bytes = (n + 1) * sizeof(char);
-		sec_part = realloc(sec_part, bytes);
-		sec_part[k][n] = list[i][n];
-		n = 0;
-		puts(sec_part[k]);
+	int i;
+	sec_part = &list[redirect_pos];
+	free(list[redirect_pos - 1]);
+	list[redirect_pos - 1] = NULL;
+	int fd[2];
+	pipe(fd);
+	if (fork() == 0) {
+		dup2(fd[1], 1);
+		close(fd[0]);
+		close(fd[1]);
+		execvp(list[0], list);
 	}
-}
+	if (fork() == 0) {
+		dup2(fd[0], 0);
+		close(fd[0]);
+		close(fd[1]);
+		execvp(sec_part[0], sec_part);
+	}
+	close(fd[0]);
+	close(fd[1]);
+	wait(NULL);
+	wait(NULL);
+	for (i = redirect_pos; list[i] != NULL; i++) {
+		free(list[i]);
+	}
+	free(list[i]);
 
+}
+//	ls -l | wc
+//   (list) --> ls -l NULL (sec_part) --> wc NULL
 //
 int start_shell() {
 	int direction, redirect_position;
